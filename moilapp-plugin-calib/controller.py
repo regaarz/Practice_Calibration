@@ -20,8 +20,8 @@ class MainWindow(QWidget):
         self.ui.camera.clicked.connect(self.detect_checker_board)
         self.ui.capture.clicked.connect(self.capture_camera)
 
-        self.ui.spinBox_X.valueChanged.connect(self.update_dimensi_papan_catur)
-        self.ui.spinBox_Y.valueChanged.connect(self.update_dimensi_papan_catur)
+        self.ui.spinBox_X.valueChanged.connect(self.update_dimension)
+        self.ui.spinBox_Y.valueChanged.connect(self.update_dimension)
         self.criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
         self.image_dir_path = "images"
@@ -30,6 +30,8 @@ class MainWindow(QWidget):
             print(f'"{self.image_dir_path}" Directory is created')
         else:
             print(f'"{self.image_dir_path}" Directory already Exists.')
+
+        self.CHESS_BOARD_DIM = (self.ui.spinBox_X.value(), self.ui.spinBox_Y.value())
 
         # Image counter
         self.image_counter = 0
@@ -40,10 +42,10 @@ class MainWindow(QWidget):
         self.timer.timeout.connect(self.update_frame)
 
     def set_stylesheet(self):
-        self.ui.label.setStyleSheet("font-size:64px;")
+        self.ui.label.setStyleSheet("font-size:12pt;")
         self.ui.label.setStyleSheet(self.model.style_label())
 
-    def update_dimensi_papan_catur(self):
+    def update_dimension(self):
         # Ambil nilai dari spinbox x dan y
         x_value = self.ui.spinBox_X.value()
         y_value = self.ui.spinBox_Y.value()
@@ -106,13 +108,15 @@ class MainWindow(QWidget):
 
         # Update UI labels
         self.ui.label_camMatrix.setText(str(camMatrix))
+        self.ui.label_camMatrix.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.ui.label_distCof.setText(str(distCof))
+        self.ui.label_distCof.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.ui.label_rVector.setText(str(rVector))
         self.ui.label_tVector.setText(str(tVector))
 
 
     def detect_checker_board(self):
-        self.cap = cv.VideoCapture(0)
+        self.cap = cv.VideoCapture(2)
         if not self.cap.isOpened():
             print("Error: Failed to open camera.")
             return
@@ -127,12 +131,16 @@ class MainWindow(QWidget):
         if self.cap is not None and self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
-                gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)  # Konversi ke skala abu-abu
-                ret, corners = cv.findChessboardCorners(gray, self.CHESS_BOARD_DIM)
-                if ret:
-                    corners = cv.cornerSubPix(gray, corners, (3, 3), (-1, -1),
-                                              self.criteria)  # Menyesuaikan ukuran jendela
-                    frame = cv.drawChessboardCorners(frame, self.CHESS_BOARD_DIM, corners, ret)
+                gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+
+                # Check if chessboard dimensions are valid
+                if self.CHESS_BOARD_DIM[0] > 2 and self.CHESS_BOARD_DIM[1] > 2:
+                    ret, corners = cv.findChessboardCorners(gray, self.CHESS_BOARD_DIM)
+                    if ret:
+                        corners = cv.cornerSubPix(gray, corners, (3, 3), (-1, -1), self.criteria)
+                        frame = cv.drawChessboardCorners(frame, self.CHESS_BOARD_DIM, corners, ret)
+                else:
+                    print("Not yet Chessboard")
 
                 # Resize frame to fit label_cam
                 frame_resized = cv.resize(frame, (self.ui.cam.width(), self.ui.cam.height()))
@@ -176,11 +184,11 @@ class MainWindow(QWidget):
     def __del__(self):
         self.close_camera()
 
-    def closeEvent(self, event):
-        self.close_camera()
-        event.accept()
+    # def closeEvent(self, event):
+    #     self.close_camera()
+    #     event.accept()
 
-class WebCalib(PluginInterface):
+class Calibration(PluginInterface):
     def __init__(self):
         super().__init__()
         self.widget = None
@@ -191,7 +199,7 @@ class WebCalib(PluginInterface):
         return self.widget
 
     def set_icon_apps(self):
-        return "web.png"
+        return "icon.png"
 
     def change_stylesheet(self):
         self.widget.set_stylesheet()
@@ -199,6 +207,6 @@ class WebCalib(PluginInterface):
 if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
-    interface = WebCalib()
+    interface = Calibration()
     interface.show()
     sys.exit(app.exec())
